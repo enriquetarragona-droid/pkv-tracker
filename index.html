@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PKV Tracker">
+  <title>Ernährungs- & Therapie-Protokoll (PKV-Nachweis)</title>
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f172a'/><text y='68' x='50' text-anchor='middle' font-size='54'>🥗</text></svg>">
+  <script src="https://unpkg.com/html5-qrcode" defer></script>
+
+  <style>
+    :root {
+      --bg: #f1f5f9; --surface: #ffffff; --surface-alt: #f8fafc; --border: #e2e8f0; --border-strong: #cbd5e1;
+      --text: #0f172a; --text-muted: #64748b; --primary: #0f172a; --accent: #4f46e5; --accent-soft: #eef2ff;
+      --emerald: #059669; --emerald-bg: #ecfdf5; --emerald-border: #a7f3d0; --blue: #1d4ed8; --blue-bg: #eff6ff;
+      --amber: #b45309; --amber-bg: #fffbeb; --rose: #be123c; --rose-bg: #fff1f2; --radius: 16px; --radius-sm: 10px;
+      --shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; background-color: var(--bg); color: var(--text); line-height: 1.45; padding-bottom: 90px; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 14px; }
+    .app-header { background: var(--primary); color: #fff; padding: calc(14px + env(safe-area-inset-top)) 0 14px 0; position: sticky; top: 0; z-index: 40; box-shadow: 0 2px 12px rgba(0,0,0,0.15); margin-bottom: 16px; }
+    .header-inner { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .app-title { font-size: 1.08rem; font-weight: 800; letter-spacing: -0.02em; }
+    .app-subtitle { font-size: 0.72rem; color: #34d399; font-weight: 600; }
+    .header-actions { display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.85rem; font-weight: 600; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid transparent; cursor: pointer; transition: all 0.15s; font-family: inherit; white-space: nowrap; min-height: 42px; }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-sm { padding: 7px 10px; font-size: 0.76rem; min-height: 34px; }
+    .btn-dark { background: #1e293b; color: #f8fafc; border-color: #334155; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-emerald { background: var(--emerald); color: #fff; }
+    .btn-outline { background: #fff; color: var(--text); border-color: var(--border-strong); }
+    .card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; margin-bottom: 16px; box-shadow: var(--shadow); }
+    .card-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+    .card-desc { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+    .quick-fav-section { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin: 12px 0 14px 0; }
+    .quick-fav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .quick-fav-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); }
+    .fav-chips-wrap { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .fav-chips-wrap::-webkit-scrollbar { display: none; }
+    .fav-chip { display: inline-flex; align-items: center; gap: 6px; background: #ffffff; border: 1px solid var(--border-strong); border-radius: 999px; padding: 6px 12px; font-size: 0.78rem; font-weight: 600; color: var(--text); white-space: nowrap; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.03); flex-shrink: 0; }
+    .fav-chip:active { transform: scale(0.96); background: var(--accent-soft); border-color: var(--accent); }
+    .fav-chip-kcal { font-size: 0.7rem; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; border-radius: 99px; }
+    .fav-chip-del { color: #94a3b8; font-size: 0.85rem; padding: 0 2px; margin-left: 2px; }
+    .mode-tabs { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--bg); padding: 4px; border-radius: 12px; margin-bottom: 14px; gap: 4px; }
+    .mode-tab { border: none; background: transparent; padding: 10px 6px; border-radius: 9px; font-size: 0.8rem; font-weight: 700; color: var(--text-muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .mode-tab span.icon { font-size: 1.2rem; }
+    .mode-tab.active { background: #fff; color: var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .field-group { display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; width: 100%; }
+    label.field-label { display: block; font-size: 0.71rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; color: #475569; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    input[type="text"], input[type="password"], input[type="number"], input[type="date"], select, textarea { display: block; width: 100%; max-width: 100%; min-width: 0; height: 44px; padding: 8px 11px; font-size: 16px; font-family: inherit; color: var(--text); background-color: #fff; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); outline: none; -webkit-appearance: none; appearance: none; }
+    textarea { height: auto; min-height: 82px; padding: 10px 12px; }
+    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23475569' viewBox='0 0 16 16'%3E%3Cpath d='M4.646 6.646a.5.5 0 0 1 .708 0L8 9.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 16px 16px; padding-right: 32px; }
+    input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12); }
+    .mode-panel { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+    .upload-trigger { display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed var(--border-strong); border-radius: 12px; padding: 18px 12px; background: #fff; cursor: pointer; text-align: center; }
+    .preview-img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 10px; margin-bottom: 10px; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: end; }
+    .col-span-2 { grid-column: span 2; min-width: 0; }
+    .macro-grid { grid-column: span 2; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; align-items: end; padding-top: 2px; }
+    @media (max-width: 370px) { .macro-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .input-kcal { border: 2px solid var(--primary) !important; font-weight: 800; text-align: center; }
+    .input-protein { background-color: var(--blue-bg) !important; border-color: #93c5fd !important; color: var(--blue) !important; font-weight: 700; text-align: center; }
+    .input-carbs { background-color: var(--amber-bg) !important; border-color: #fcd34d !important; color: var(--amber) !important; font-weight: 700; text-align: center; }
+    .input-fat { background-color: var(--rose-bg) !important; border-color: #fda4af !important; color: var(--rose) !important; font-weight: 700; text-align: center; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    @media (min-width: 720px) {
+      .kpi-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+      .form-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+      .col-desktop-2 { grid-column: span 2; }
+      .col-desktop-3 { grid-column: span 3; }
+      .col-desktop-4 { grid-column: span 4; }
+      .col-desktop-6 { grid-column: span 6; }
+      .macro-grid { grid-column: span 6; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    }
+    .kpi-card { padding: 12px; border-radius: 12px; background: var(--surface-alt); border: 1px solid var(--border); display: flex; flex-direction: column; justify-content: space-between; min-height: 82px; }
+    .kpi-card.blue { background: var(--blue-bg); border-color: #bfdbfe; }
+    .kpi-card.amber { background: var(--amber-bg); border-color: #fde68a; }
+    .kpi-card.rose { background: var(--rose-bg); border-color: #fecdd3; }
+    .kpi-card.emerald { background: var(--emerald-bg); border-color: var(--emerald-border); }
+    .kpi-label { font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+    .kpi-value { font-size: 1.22rem; font-weight: 800; margin: 2px 0; display: block; }
+    .kpi-sub { font-size: 0.68rem; color: var(--text-muted); }
+    .chart-box { width: 100%; overflow-x: auto; padding-top: 8px; }
+    .chart-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.76rem; font-weight: 600; margin-bottom: 10px; }
+    .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; }
+    .mobile-meal-list { display: flex; flex-direction: column; gap: 12px; }
+    .meal-card { border: 1px solid var(--border-strong); border-radius: 14px; padding: 12px; background: var(--surface-alt); }
+    .meal-card-top { display: grid; grid-template-columns: 1fr 1fr 34px; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .meal-card-top input[type="date"], .meal-card-top select { height: 36px; padding: 4px 8px; font-size: 13px; font-weight: 600; }
+    .meal-card-macros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 8px; align-items: end; }
+    .mini-field { display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; }
+    .mini-field label { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mini-field input { height: 36px; padding: 4px 6px; font-size: 14px; font-weight: 700; text-align: center; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.84rem; text-align: left; }
+    th { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; padding: 9px 8px; border-bottom: 2px solid var(--border); white-space: nowrap; }
+    td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .table-input { width: 100%; height: 32px !important; padding: 4px 6px !important; font-size: 0.84rem !important; border: 1px solid transparent !important; background: transparent !important; }
+    .table-input:focus { border-color: var(--accent) !important; background: #fff !important; }
+    .desktop-only-table { display: none; }
+    @media (min-width: 768px) { .desktop-only-table { display: block; } .mobile-only-cards { display: none; } }
+    @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.5); } 70% { box-shadow: 0 0 0 10px rgba(225, 29, 72, 0); } 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); } }
+    .recording-active { background: #e11d48 !important; color: #fff !important; animation: pulseRed 1.5s infinite; }
+    .hidden { display: none !important; }
+    .print-only { display: none; }
+    @media print {
+      .no-print, .mobile-only-cards { display: none !important; }
+      .print-only, .desktop-only-table { display: block !important; }
+      body { background: #fff !important; color: #000 !important; font-size: 11px; padding: 0; }
+      .container { max-width: 100%; padding: 0; }
+      .card { box-shadow: none !important; border: 1px solid #cbd5e1 !important; padding: 12px !important; margin-bottom: 12px !important; break-inside: avoid; }
+      .kpi-grid { grid-template-columns: repeat(6, 1fr) !important; }
+      .table-input, select.table-input { border: none !important; padding: 0 !important; appearance: none; -webkit-appearance: none; background: none !important; }
+      @page { margin: 1.2cm; size: A4 portrait; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="app-header no-print">
+    <div class="container header-inner">
+      <div>
+        <h1 class="app-title">🥗 PKV Tracker v4.5</h1>
+        <p class="app-subtitle">✓ Gemini 3.8 Flash & Auto-Latest Fallback</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" onclick="toggleSettings()" class="btn btn-dark btn-sm" title="Einstellungen">⚙️ Key</button>
+        <button type="button" onclick="exportBackup()" class="btn btn-dark btn-sm" title="Backup sichern">💾</button>
+        <label class="btn btn-dark btn-sm" style="cursor:pointer;" title="Backup laden">
+          📂
+          <input type="file" id="importFile" accept=".json" class="hidden" onchange="importBackup(event)">
+        </label>
+        <button type="button" onclick="window.print()" class="btn btn-emerald btn-sm">📄 PDF</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <div class="print-only" style="border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 14px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <h1 style="font-size: 18px; font-weight: 800;">Ernährungs-, Makro- und Therapieprotokoll</h1>
+          <p style="font-size: 11px; color: #475569;">Dokumentation zur Vorlage bei der Privaten Krankenversicherung (Begleitnachweis GLP-1/GIP-Therapie / Mounjaro)</p>
+        </div>
+        <div style="text-align:right; font-size: 11px;">
+          <p style="font-weight:700;" id="printPatientName">Versicherter: —</p>
+          <p id="printInsuranceNumber">Versicherungs-Nr.: —</p>
+          <p id="printDateRange" style="color:#475569; margin-top:2px;">Zeitraum: Gesamtes Protokoll</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- EINSTELLUNGEN -->
+    <section id="settingsPanel" class="card hidden no-print">
+      <h2 class="card-title" style="margin-bottom:4px;">⚙️ Einstellungen: Google AQ-Key & PKV-Stammdaten</h2>
+      <p class="card-desc" style="margin-bottom:14px;">
+        Füge hier deinen Google <b>AQ....</b> (oder AIza...) Schlüssel ein.
+      </p>
+      <div class="form-grid">
+        <div class="field-group col-span-2 col-desktop-2">
+          <label class="field-label">API-Schlüssel (AQ.... / AIza...)</label>
+          <input type="text" id="apiKeyInput" placeholder="AQ.Ab... hier einfügen" oninput="cleanExtractedKey()">
+        </div>
+        <div class="field-group col-span-2 col-desktop-2">
+          <label class="field-label">Vor- und Nachname (für PKV-PDF)</label>
+          <input type="text" id="patientNameInput" placeholder="z. B. Max Mustermann">
+        </div>
+        <div class="field-group col-span-2 col-desktop-2">
+          <label class="field-label">Versicherungs-Nr. & Tagesziel (kcal)</label>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+            <input type="text" id="insuranceInput" placeholder="Vers.-Nr.">
+            <input type="number" id="kcalGoalInput" placeholder="z.B. 1800">
+          </div>
+        </div>
+      </div>
+      <div id="keyDiagnosticBox" class="hidden" style="margin-top:12px; padding:10px 12px; border-radius:10px; font-size:0.78rem; font-weight:600; background:var(--surface-alt); border:1px solid var(--border-strong);"></div>
+      <div style="margin-top:14px; display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px;">
+        <button type="button" onclick="testApiKeyConnection()" class="btn btn-outline">🔌 Gemini Key direkt testen</button>
+        <button type="button" onclick="saveSettings()" class="btn btn-primary">Einstellungen speichern</button>
+      </div>
+    </section>
+
+    <!-- 1. MAHLZEIT ERFASSEN (Ganz oben für schnelle tägliche Nutzung) -->
+    <section class="card no-print">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 class="card-title">➕ Mahlzeit erfassen</h2>
+        <span style="font-size:0.72rem; background:var(--emerald-bg); color:var(--emerald); padding:3px 8px; border-radius:99px; font-weight:700;">100 % editierbar</span>
+      </div>
+
+      <div class="quick-fav-section">
+        <div class="quick-fav-header">
+          <span class="quick-fav-title">⚡ Schnellwahl-Favoriten (1-Tap)</span>
+          <button type="button" onclick="saveCurrentAsFavorite()" style="background:none; border:none; color:var(--accent); font-size:0.74rem; font-weight:700; cursor:pointer;">
+            + Aktuelle Eingabe als Favorit
+          </button>
+        </div>
+        <div id="favoritesBar" class="fav-chips-wrap"></div>
+      </div>
+
+      <div class="mode-tabs">
+        <button type="button" id="tabPhoto" class="mode-tab active" onclick="switchMode('photo')">
+          <span class="icon">📸</span>
+          <span>Foto-KI</span>
+        </button>
+        <button type="button" id="tabText" class="mode-tab" onclick="switchMode('text')">
+          <span class="icon">🎙️</span>
+          <span>Sprache / Text</span>
+        </button>
+        <button type="button" id="tabBarcode" class="mode-tab" onclick="switchMode('barcode')">
+          <span class="icon">🔍</span>
+          <span>Barcode (DE)</span>
+        </button>
+      </div>
+
+      <!-- MODUS A: FOTO-KI -->
+      <div id="panelPhoto" class="mode-panel">
+        <input type="file" id="photoInput" accept="image/*" class="hidden" onchange="handlePhotoUpload(event)">
+        <div id="photoPreviewContainer" class="hidden">
+          <img id="photoPreview" src="" alt="Vorschau" class="preview-img">
+        </div>
+        <label for="photoInput" class="upload-trigger">
+          <span style="font-size:1.8rem;">📷</span>
+          <span style="font-size:0.88rem; font-weight:700; margin-top:4px;">Tippen für Kamera oder Foto-Mediathek</span>
+          <span style="font-size:0.74rem; color:var(--text-muted);">Auf dem iPhone direkt Kamera oder Album wählen</span>
+        </label>
+        <input type="text" id="aiHintInput" placeholder="Optionaler Hinweis (z.B. '200g Rinderfilet, 1 EL Kräuterbutter')" style="margin-top:10px;">
+        <button type="button" id="analyzePhotoBtn" onclick="analyzePhotoWithAI()" disabled class="btn btn-accent" style="width:100%; margin-top:10px;">
+          ✨ Foto mit Gemini 3.8 auswerten
+        </button>
+      </div>
+
+      <!-- MODUS B: FREITEXT & SPRACHEINGABE -->
+      <div id="panelText" class="mode-panel hidden">
+        <label class="field-label">Beschreibe oder diktiere deine Mahlzeit</label>
+        <textarea id="freeTextInput" rows="3" placeholder="z. B. Heute Mittag 250g Skyr mit einer Handvoll Blaubeeren, 20g Haferflocken und einem Cappuccino..."></textarea>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button type="button" id="voiceBtn" onclick="toggleVoiceInput()" class="btn btn-outline" style="flex:1;">
+            🎤 Diktieren
+          </button>
+          <button type="button" id="analyzeTextBtn" onclick="analyzeTextWithAI()" class="btn btn-accent" style="flex:2;">
+            ✨ Text berechnen
+          </button>
+        </div>
+      </div>
+
+      <!-- MODUS C: BARCODE-SCANNER -->
+      <div id="panelBarcode" class="mode-panel hidden">
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+          <button type="button" id="startScanBtn" onclick="startBarcodeScanner()" class="btn btn-accent" style="flex:1;">
+            📷 Kamera-Scanner starten
+          </button>
+          <button type="button" id="stopScanBtn" onclick="stopBarcodeScanner()" class="btn btn-outline hidden">
+            ⏹️ Stopp
+          </button>
+        </div>
+
+        <div id="barcodeReader" style="width:100%; border-radius:10px; overflow:hidden; margin-bottom:10px;"></div>
+
+        <div class="form-grid">
+          <div class="field-group">
+            <label class="field-label">EAN-Barcode</label>
+            <input type="text" id="barcodeInput" placeholder="z.B. 4008400404127" inputmode="numeric">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Menge (Gramm / ml)</label>
+            <input type="number" id="barcodeGrams" value="100" step="5" onchange="recalcCurrentBarcodeProduct()" inputmode="decimal">
+          </div>
+        </div>
+        <button type="button" onclick="lookupBarcode()" class="btn btn-outline" style="width:100%; margin-top:10px;">
+          🔎 Produkt in Lebensmittel-Datenbank abrufen
+        </button>
+      </div>
+
+      <p id="statusBanner" class="hidden" style="font-size:0.8rem; font-weight:600; color:var(--accent); margin-bottom:12px; text-align:center;"></p>
+
+      <!-- EDITIERBARE ERGEBNISMASKE -->
+      <div class="form-grid">
+        <div class="field-group col-desktop-3">
+          <label class="field-label">Datum</label>
+          <input type="date" id="entryDate">
+        </div>
+        <div class="field-group col-desktop-3">
+          <label class="field-label">Mahlzeit</label>
+          <select id="entryMealType">
+            <option value="Frühstück">Frühstück</option>
+            <option value="Mittagessen">Mittagessen</option>
+            <option value="Abendessen">Abendessen</option>
+            <option value="Snack / Shake">Snack / Shake</option>
+          </select>
+        </div>
+
+        <div class="field-group col-span-2 col-desktop-6">
+          <label class="field-label">Gericht / Produktname (jederzeit anpassbar)</label>
+          <input type="text" id="entryDesc" placeholder="Ergebnis aus KI / Schnellwahl oder eigene Eingabe">
+        </div>
+
+        <div class="macro-grid">
+          <div class="field-group">
+            <label class="field-label" style="color:var(--primary);">Kalorien</label>
+            <input type="number" id="entryKcal" placeholder="kcal" class="input-kcal" inputmode="numeric">
+          </div>
+          <div class="field-group">
+            <label class="field-label" style="color:var(--blue);">Protein (g)</label>
+            <input type="number" step="0.1" id="entryProtein" placeholder="0" onchange="recalcKcalHint()" class="input-protein" inputmode="decimal">
+          </div>
+          <div class="field-group">
+            <label class="field-label" style="color:var(--amber);">KH (g)</label>
+            <input type="number" step="0.1" id="entryCarbs" placeholder="0" onchange="recalcKcalHint()" class="input-carbs" inputmode="decimal">
+          </div>
+          <div class="field-group">
+            <label class="field-label" style="color:var(--rose);">Fett (g)</label>
+            <input type="number" step="0.1" id="entryFat" placeholder="0" onchange="recalcKcalHint()" class="input-fat" inputmode="decimal">
+          </div>
+        </div>
+
+        <div class="col-span-2 col-desktop-6" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding-top:2px;">
+          <span id="macroCalcHint" style="font-size:0.74rem; color:var(--text-muted);">Alle Werte vor dem Speichern frei anpassbar.</span>
+          <button type="button" onclick="calculateKcalFromMacros()" style="background:none; border:none; color:var(--accent); font-size:0.75rem; font-weight:700; cursor:pointer; text-decoration:underline;">
+            🔄 kcal aus Makros berechnen
+          </button>
+        </div>
+
+        <div class="col-span-2 col-desktop-6" style="display:flex; gap:8px; margin-top:2px;">
+          <button type="button" onclick="addEntry()" class="btn btn-primary" style="flex:1; padding:13px; font-size:0.95rem;">
+            ✅ Ins Protokoll speichern
+          </button>
+          <button type="button" onclick="saveCurrentAsFavorite()" class="btn btn-outline" title="Als Schnellwahl-Favorit merken" style="padding:13px 14px;">
+            ⭐
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. ZEITRAUM-FILTER & KPIS -->
+    <section class="card">
+      <div class="no-print" style="margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div>
+            <h2 class="card-title">📊 Zeitraum & Therapie-Kennzahlen</h2>
+            <p class="card-desc">Filtere den gewünschten Zeitraum für deinen PKV-Nachweis</p>
+          </div>
+          <button type="button" onclick="resetFilter()" class="btn btn-outline btn-sm">Alle zeigen</button>
+        </div>
+        <div class="form-grid">
+          <div class="field-group">
+            <label class="field-label">Zeitraum von</label>
+            <input type="date" id="filterFrom" onchange="renderAll()">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Zeitraum bis</label>
+            <input type="date" id="filterTo" onchange="renderAll()">
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span class="kpi-label">Erfasste Tage</span>
+          <span id="statDays" class="kpi-value">0</span>
+          <span class="kpi-sub">im Zeitraum</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Ø Kalorien</span>
+          <span id="statAvgKcal" class="kpi-value">0 kcal</span>
+          <span id="statGoalSub" class="kpi-sub">pro Tag</span>
+        </div>
+        <div class="kpi-card blue">
+          <span class="kpi-label" style="color:var(--blue);">Ø Protein</span>
+          <span id="statAvgProtein" class="kpi-value" style="color:var(--blue);">0 g</span>
+          <span class="kpi-sub" style="color:var(--blue);">Muskelerhalt</span>
+        </div>
+        <div class="kpi-card amber">
+          <span class="kpi-label" style="color:var(--amber);">Ø Kohlenh.</span>
+          <span id="statAvgCarbs" class="kpi-value" style="color:var(--amber);">0 g</span>
+          <span class="kpi-sub" style="color:var(--amber);">pro Tag</span>
+        </div>
+        <div class="kpi-card rose">
+          <span class="kpi-label" style="color:var(--rose);">Ø Fett</span>
+          <span id="statAvgFat" class="kpi-value" style="color:var(--rose);">0 g</span>
+          <span class="kpi-sub" style="color:var(--rose);">pro Tag</span>
+        </div>
+        <div class="kpi-card emerald">
+          <span class="kpi-label" style="color:var(--emerald);">Gewicht</span>
+          <span id="statWeightDiff" class="kpi-value" style="color:var(--emerald);">—</span>
+          <span id="statWeightSub" class="kpi-sub" style="color:var(--emerald);">Start vs. Aktuell</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. WOCHEN- & THERAPIE-WIDGET -->
+    <section class="card no-print" style="background: var(--emerald-bg); border-color: var(--emerald-border);">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+        <h2 class="card-title" style="color: var(--emerald); font-size:0.95rem;">⚖️ Wöchentlicher Check-in (Gewicht & Mounjaro)</h2>
+        <span id="lastCheckinBadge" style="font-size:0.7rem; font-weight:700; background:#fff; color:var(--emerald); padding:3px 9px; border-radius:99px; border:1px solid var(--emerald-border);">1x pro Woche</span>
+      </div>
+      <p class="card-desc" style="margin-bottom:12px; color:#065f46;">Einmal pro Woche Gewicht & Dosis eintragen – fließt automatisch in die Verlaufskurve und das PKV-Protokoll ein.</p>
+      <div class="form-grid">
+        <div class="field-group col-desktop-2">
+          <label class="field-label">Datum (Check-in)</label>
+          <input type="date" id="weeklyDate">
+        </div>
+        <div class="field-group col-desktop-2">
+          <label class="field-label">Gewicht (kg)</label>
+          <input type="number" step="0.1" id="weeklyWeight" placeholder="z. B. 93.4" inputmode="decimal" style="border-color:var(--emerald);">
+        </div>
+        <div class="field-group col-span-2 col-desktop-2">
+          <label class="field-label">Therapie / Mounjaro Dosis</label>
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="weeklyMedNote" placeholder="z. B. Mounjaro 5 mg" style="border-color:var(--emerald);">
+            <button type="button" onclick="saveWeeklyCheckin()" class="btn btn-emerald" style="padding:0 16px;">💾 Speichern</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. VERLAUFSKURVEN -->
+    <section class="card">
+      <div style="margin-bottom:8px;">
+        <h2 class="card-title">📈 Verlaufskurve: Kalorienzufuhr & Gewichtsentwicklung</h2>
+        <p class="card-desc">Visueller Therapieverlauf (wird automatisch in den PDF-Bericht für die PKV übernommen)</p>
+      </div>
+      <div class="chart-legend">
+        <span><i class="legend-dot" style="background:#cbd5e1;"></i>Tageskalorien (kcal)</span>
+        <span><i class="legend-dot" style="background:#ef4444; height:3px; vertical-align:middle;"></i>Kalorien-Ziel</span>
+        <span><i class="legend-dot" style="background:#059669; border-radius:50%;"></i>Körpergewicht (kg)</span>
+      </div>
+      <div id="chartContainer" class="chart-box"></div>
+    </section>
+
+    <!-- 5. TAGESBILANZEN -->
+    <section class="card">
+      <h2 class="card-title" style="margin-bottom:10px;">📅 Tagesbilanzen (Zusammenfassung pro Tag)</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Datum</th>
+              <th>Mahlz.</th>
+              <th>Kalorien</th>
+              <th>Protein</th>
+              <th>KH</th>
+              <th>Fett</th>
+              <th>Gewicht</th>
+              <th>Therapie / Mounjaro</th>
+            </tr>
+          </thead>
+          <tbody id="dailySummaryBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 6. EINZELNACHWEIS -->
+    <section class="card">
+      <div style="margin-bottom:12px;">
+        <h2 class="card-title">🍽️ Alle Einträge (nachträglich editierbar)</h2>
+        <p class="card-desc no-print">Tippe direkt in ein Feld, um Werte oder Texte im Nachhinein anzupassen.</p>
+      </div>
+
+      <div id="mobileEntriesList" class="mobile-only-cards mobile-meal-list"></div>
+
+      <div class="desktop-only-table table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:110px;">Datum</th>
+              <th style="width:120px;">Typ</th>
+              <th>Gericht / Beschreibung</th>
+              <th style="width:70px;">kcal</th>
+              <th style="width:65px;">Prot (g)</th>
+              <th style="width:65px;">KH (g)</th>
+              <th style="width:65px;">Fett (g)</th>
+              <th class="no-print" style="width:40px;"></th>
+            </tr>
+          </thead>
+          <tbody id="entriesTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- UNTERSCHRIFTENFELD -->
+    <section class="print-only" style="margin-top: 28px; padding-top: 14px; border-top: 1px solid #cbd5e1;">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+        <div>
+          <p style="font-size:10px; color:#475569; margin-bottom:26px;">Hiermit bestätige ich die Richtigkeit der protokollierten Ernährungs- und Gewichtsdaten im Rahmen meiner ärztlich begleiteten Therapie.</p>
+          <div style="border-top:1px solid #0f172a; padding-top:4px; font-size:10px;">Ort, Datum & Unterschrift Versicherter</div>
+        </div>
+        <div>
+          <p style="font-size:10px; color:#475569; margin-bottom:26px;">Optional: Ärztlicher Sichtvermerk / Bestätigung des Therapieverlaufs</p>
+          <div style="border-top:1px solid #0f172a; padding-top:4px; font-size:10px;">Datum, Praxisstempel & Unterschrift behandelnder Arzt</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const STORAGE_KEY_ENTRIES = 'pkv_mounjaro_entries_v1';
+    const STORAGE_KEY_SETTINGS = 'pkv_mounjaro_settings_v1';
+    const STORAGE_KEY_FAVS = 'pkv_mounjaro_favs_v1';
+    const STORAGE_KEY_MODEL = 'pkv_active_gemini_model_v45';
+
+    let entries = [];
+    let favorites = [];
+    let settings = { apiKey: '', patientName: '', insuranceNumber: '', kcalGoal: 1800 };
+
+    let currentImageBase64 = null;
+    let currentImageMimeType = null;
+    let html5QrCodeScanner = null;
+    let lastScannedProductPer100g = null;
+    let recognition = null;
+    let isRecording = false;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const todayIso = new Date().toISOString().split('T')[0];
+      document.getElementById('entryDate').value = todayIso;
+      document.getElementById('weeklyDate').value = todayIso;
+      
+      // Alte Modell-Caches früherer Versionen entfernen
+      localStorage.removeItem('pkv_active_gemini_model');
+
+      loadFromStorage();
+
+      // Automatischer Apple Health Gewicht-Sync via URL-Parameter ?weight=...
+      const urlParams = new URLSearchParams(window.location.search);
+      const incomingWeight = urlParams.get('weight');
+      if (incomingWeight) {
+        const wNum = parseFloat(incomingWeight.replace(',', '.'));
+        if (!isNaN(wNum)) {
+          let existing = entries.find(e => e.date === todayIso);
+          if (existing) {
+            existing.weight = wNum;
+          } else {
+            entries.push({
+              id: Date.now(),
+              date: todayIso,
+              mealType: 'Check-in',
+              desc: 'Gewichts-Sync via Apple Health',
+              kcal: 0, protein: 0, carbs: 0, fat: 0,
+              weight: wNum,
+              medNote: ''
+            });
+          }
+          saveEntries();
+          showStatus('⚖️ Gewicht (' + wNum + ' kg) aus Apple Health übernommen!');
+        }
+      }
+
+      renderFavorites();
+      renderAll();
+    });
+
+    function showStatus(msg, isError = false) {
+      const el = document.getElementById('statusBanner');
+      el.textContent = msg;
+      el.style.color = isError ? '#be123c' : '#4f46e5';
+      el.classList.remove('hidden');
+    }
+
+    function switchMode(mode) {
+      ['photo', 'text', 'barcode'].forEach(m => {
+        document.getElementById('tab' + m.charAt(0).toUpperCase() + m.slice(1)).classList.toggle('active', m === mode);
+        document.getElementById('panel' + m.charAt(0).toUpperCase() + m.slice(1)).classList.toggle('hidden', m !== mode);
+      });
+      if (mode !== 'barcode') stopBarcodeScanner();
+    }
+
+    function extractPureKey(rawInput) {
+      if (!rawInput) return '';
+      const str = String(rawInput).trim();
+      const aqMatch = str.match(/AQ\.[A-Za-z0-9_.-]+/);
+      if (aqMatch) return aqMatch[0];
+      const aizaMatch = str.match(/AIza[A-Za-z0-9_-]+/);
+      if (aizaMatch) return aizaMatch[0];
+      return str.replace(/\s+/g, '');
+    }
+
+    function cleanExtractedKey() {
+      const input = document.getElementById('apiKeyInput');
+      const cleaned = extractPureKey(input.value);
+      const diag = document.getElementById('keyDiagnosticBox');
+      if (cleaned && cleaned !== input.value && cleaned.length > 10) {
+        input.value = cleaned;
+      }
+      if (cleaned.startsWith('AQ.')) {
+        diag.classList.remove('hidden');
+        diag.style.color = '#059669';
+        diag.textContent = '✅ Google Gemini Auth-Key (AQ) erkannt. Tippe auf "🔌 Gemini Key direkt testen"!';
+      } else if (cleaned.startsWith('AIza')) {
+        diag.classList.remove('hidden');
+        diag.style.color = '#059669';
+        diag.textContent = '✅ Google Gemini Standard-Key erkannt.';
+      } else {
+        diag.classList.add('hidden');
+      }
+    }
+
+    function loadFromStorage() {
+      const savedEntries = localStorage.getItem(STORAGE_KEY_ENTRIES);
+      if (savedEntries) {
+        try { entries = JSON.parse(savedEntries); } catch (e) { entries = []; }
+      } else {
+        const today = new Date().toISOString().split('T')[0];
+        entries = [
+          {
+            id: Date.now() - 86400000,
+            date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+            mealType: 'Abendessen',
+            desc: 'Gegrilltes Lachsfilet (200g) mit Ofen-Brokkoli und Olivenöl',
+            kcal: 540, protein: 44, carbs: 12, fat: 34, weight: 94.6, medNote: 'Mounjaro 5 mg'
+          },
+          {
+            id: Date.now() - 10000,
+            date: today,
+            mealType: 'Frühstück',
+            desc: 'Skyr Natur (250g) mit frischen Beeren und 15g Walnüssen',
+            kcal: 285, protein: 29, carbs: 14, fat: 11, weight: null, medNote: ''
+          }
+        ];
+        saveEntries();
+      }
+
+      const savedFavs = localStorage.getItem(STORAGE_KEY_FAVS);
+      if (savedFavs) {
+        try { favorites = JSON.parse(savedFavs); } catch (e) { favorites = []; }
+      } else {
+        favorites = [
+          { id: 1, label: '🥣 Skyr & Beeren', mealType: 'Frühstück', desc: 'Skyr Natur (250g) mit Beeren & 15g Walnüssen', kcal: 285, protein: 29, carbs: 14, fat: 11 },
+          { id: 2, label: '🥤 Protein-Shake', mealType: 'Snack / Shake', desc: 'Whey Isolat Protein-Shake (30g Pulver mit Wasser)', kcal: 115, protein: 25, carbs: 1.5, fat: 1 },
+          { id: 3, label: '🍳 2 Eier & Avocado', mealType: 'Frühstück', desc: '2 Rühreier mit 1/2 Avocado und 1 Scheibe Vollkornbrot', kcal: 390, protein: 18, carbs: 19, fat: 26 },
+          { id: 4, label: '🥗 Hähnchen-Salat', mealType: 'Mittagessen', desc: 'Großer gemischter Salat mit 180g Hähnchenbrust & Olivenöl-Dressing', kcal: 420, protein: 42, carbs: 11, fat: 22 }
+        ];
+        saveFavorites();
+      }
+
+      const savedSettings = localStorage.getItem(STORAGE_KEY_SETTINGS);
+      if (savedSettings) {
+        try { settings = { ...settings, ...JSON.parse(savedSettings) }; } catch (e) {}
+      }
+      document.getElementById('apiKeyInput').value = settings.apiKey || '';
+      document.getElementById('patientNameInput').value = settings.patientName || '';
+      document.getElementById('insuranceInput').value = settings.insuranceNumber || '';
+      document.getElementById('kcalGoalInput').value = settings.kcalGoal || 1800;
+      updatePrintHeader();
+    }
+
+    function saveEntries() { localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(entries)); }
+    function saveFavorites() { localStorage.setItem(STORAGE_KEY_FAVS, JSON.stringify(favorites)); }
+
+    function saveWeeklyCheckin() {
+      const date = document.getElementById('weeklyDate').value;
+      const weightVal = document.getElementById('weeklyWeight').value;
+      const medNote = document.getElementById('weeklyMedNote').value.trim();
+
+      if (!date) {
+        alert('Bitte ein Datum für den Check-in angeben.');
+        return;
+      }
+      if (weightVal === '' && !medNote) {
+        alert('Bitte gib ein Gewicht oder eine Dosis für den Check-in ein.');
+        return;
+      }
+
+      let existing = entries.find(e => e.date === date);
+      if (existing) {
+        if (weightVal !== '') existing.weight = Number(weightVal);
+        if (medNote) existing.medNote = medNote;
+      } else {
+        entries.push({
+          id: Date.now(),
+          date,
+          mealType: 'Check-in',
+          desc: 'Wöchentlicher Check-in' + (medNote ? ' (' + medNote + ')' : ''),
+          kcal: 0, protein: 0, carbs: 0, fat: 0,
+          weight: weightVal !== '' ? Number(weightVal) : null,
+          medNote
+        });
+      }
+
+      saveEntries();
+      renderAll();
+      document.getElementById('weeklyWeight').value = '';
+      document.getElementById('weeklyMedNote').value = '';
+      showStatus('✅ Wöchentlicher Check-in am ' + formatDateDE(date) + ' gespeichert!');
+    }
+
+    function renderFavorites() {
+      const bar = document.getElementById('favoritesBar');
+      bar.innerHTML = '';
+      if (favorites.length === 0) {
+        bar.innerHTML = '<span style="font-size:0.75rem; color:var(--text-muted);">Noch keine Favoriten.</span>';
+        return;
+      }
+      favorites.forEach(fav => {
+        const chip = document.createElement('div');
+        chip.className = 'fav-chip';
+        chip.innerHTML = '<span onclick="applyFavorite(' + fav.id + ')">' + fav.label + '</span>' +
+          '<span class="fav-chip-kcal" onclick="applyFavorite(' + fav.id + ')">' + fav.kcal + ' kcal</span>' +
+          '<span class="fav-chip-del" onclick="deleteFavorite(event, ' + fav.id + ')" title="Favorit entfernen">✕</span>';
+        bar.appendChild(chip);
+      });
+    }
+
+    function applyFavorite(id) {
+      const fav = favorites.find(f => f.id === id);
+      if (!fav) return;
+      if (fav.mealType) document.getElementById('entryMealType').value = fav.mealType;
+      document.getElementById('entryDesc').value = fav.desc;
+      document.getElementById('entryKcal').value = fav.kcal;
+      document.getElementById('entryProtein').value = fav.protein;
+      document.getElementById('entryCarbs').value = fav.carbs;
+      document.getElementById('entryFat').value = fav.fat;
+      recalcKcalHint();
+      showStatus('⚡ "' + fav.label + '" übernommen!');
+    }
+
+    function saveCurrentAsFavorite() {
+      const desc = document.getElementById('entryDesc').value.trim();
+      const kcal = Number(document.getElementById('entryKcal').value) || 0;
+      const protein = Number(document.getElementById('entryProtein').value) || 0;
+      const carbs = Number(document.getElementById('entryCarbs').value) || 0;
+      const fat = Number(document.getElementById('entryFat').value) || 0;
+      const mealType = document.getElementById('entryMealType').value;
+
+      if (!desc) {
+        alert('Bitte gib zuerst unten einen Gericht-Namen und die Nährwerte ein.');
+        return;
+      }
+
+      const defaultShort = desc.length > 22 ? desc.substring(0, 20) + '…' : desc;
+      const shortName = prompt('Kurzer Name für den Schnellwahl-Button:', '⭐ ' + defaultShort);
+      if (!shortName) return;
+
+      favorites.push({ id: Date.now(), label: shortName.trim(), mealType, desc, kcal, protein, carbs, fat });
+      saveFavorites();
+      renderFavorites();
+      showStatus('⭐ "' + shortName + '" zur Schnellwahl hinzugefügt!');
+    }
+
+    function deleteFavorite(event, id) {
+      event.stopPropagation();
+      favorites = favorites.filter(f => f.id !== id);
+      saveFavorites();
+      renderFavorites();
+    }
+
+    function toggleSettings() {
+      const panel = document.getElementById('settingsPanel');
+      panel.classList.toggle('hidden');
+      if (!panel.classList.contains('hidden')) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function saveSettings() {
+      settings.apiKey = extractPureKey(document.getElementById('apiKeyInput').value);
+      document.getElementById('apiKeyInput').value = settings.apiKey;
+      settings.patientName = document.getElementById('patientNameInput').value.trim();
+      settings.insuranceNumber = document.getElementById('insuranceInput').value.trim();
+      settings.kcalGoal = Number(document.getElementById('kcalGoalInput').value) || 1800;
+      localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
+      updatePrintHeader();
+      document.getElementById('settingsPanel').classList.add('hidden');
+      renderAll();
+      showStatus('✅ Einstellungen und Key gespeichert!');
+    }
+
+    function updatePrintHeader() {
+      document.getElementById('printPatientName').textContent = 'Versicherter: ' + (settings.patientName || '—');
+      document.getElementById('printInsuranceNumber').textContent = 'Versicherungs-Nr.: ' + (settings.insuranceNumber || '—');
+    }
+
+    // --- GEMINI 3.8 FLASH + AUTOMATISCHER ZUKUNFTS-FALLBACK (OHNE BLOCKIERENDE PARAMETER) ---
+    async function callUniversalAI(promptText, base64Image = null, mimeType = 'image/jpeg') {
+      const rawKey = document.getElementById('apiKeyInput').value || settings.apiKey;
+      const key = extractPureKey(rawKey);
+      if (!key) throw new Error('Kein API-Key eingetragen. Bitte oben auf "⚙️ Key" tippen.');
+
+      const parts = [{ text: promptText }];
+      if (base64Image) {
+        parts.push({ inline_data: { mime_type: mimeType, data: base64Image } });
+      }
+
+      // Nutzt das gespeicherte aktuelle Modell (Standard: gemini-3.8-flash) und als Backup gemini-flash-latest
+      const savedModel = localStorage.getItem(STORAGE_KEY_MODEL) || 'gemini-3.8-flash';
+      const candidateModels = [savedModel];
+      if (!candidateModels.includes('gemini-3.8-flash')) candidateModels.push('gemini-3.8-flash');
+      if (!candidateModels.includes('gemini-flash-latest')) candidateModels.push('gemini-flash-latest');
+
+      let lastErr = '';
+
+      for (const model of candidateModels) {
+        const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(key);
+        
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': key
+            },
+            body: JSON.stringify({
+              contents: [{ parts: parts }],
+              generationConfig: {
+                temperature: 0.1,
+                maxOutputTokens: 1000,
+                responseMimeType: "application/json"
+              }
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const textOut = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0].text) || '{}';
+            const parsed = extractJsonFromText(textOut);
+            localStorage.setItem(STORAGE_KEY_MODEL, model);
+            parsed._usedModel = model;
+            return parsed;
+          } else {
+            const errJson = await response.json().catch(() => ({}));
+            lastErr = (errJson && errJson.error && errJson.error.message) || ('HTTP ' + response.status);
+            
+            // Falls Google in der Fehlermeldung direkt das nächste Modell nennt (z.B. models/gemini-X.X-flash), extrahieren und merken:
+            const suggestedMatch = lastErr.match(/models\/(gemini-[a-zA-Z0-9.-]+)/);
+            if (suggestedMatch && suggestedMatch[1] && !candidateModels.includes(suggestedMatch[1])) {
+              candidateModels.push(suggestedMatch[1]);
+            }
+          }
+        } catch (err) {
+          lastErr = err.message;
+        }
+      }
+
+      throw new Error(lastErr || 'Verbindung zu Gemini fehlgeschlagen.');
+    }
+
+    function extractJsonFromText(text) {
+      let cleaned = String(text)
+        .replace(/<think>[\s\S]*?<\/think>/gi, '')
+        .replace(/```json/gi, '')
+        .replace(/```/g, '')
+        .trim();
+
+      try {
+        return JSON.parse(cleaned);
+      } catch (e) {
+        const start = cleaned.indexOf('{');
+        const end = cleaned.lastIndexOf('}');
+        if (start !== -1 && end !== -1 && end > start) {
+          try {
+            return JSON.parse(cleaned.substring(start, end + 1));
+          } catch (e2) {}
+        }
+        if (start !== -1 && end === -1) {
+          try {
+            return JSON.parse(cleaned.substring(start) + '"}');
+          } catch (e3) {}
+          try {
+            return JSON.parse(cleaned.substring(start) + '}');
+          } catch (e4) {}
+        }
+        throw new Error('Antwort der KI war unvollständig. Bitte noch einmal kurz antippen.');
+      }
+    }
+
+    async function testApiKeyConnection() {
+      const diag = document.getElementById('keyDiagnosticBox');
+      diag.classList.remove('hidden');
+      diag.style.color = '#4f46e5';
+      diag.textContent = '⏳ Verbinde mit Gemini 3.8 Flash...';
+
+      const rawKey = document.getElementById('apiKeyInput').value;
+      const key = extractPureKey(rawKey);
+
+      try {
+        const res = await callUniversalAI('Antworte NUR mit diesem JSON: {"description":"Verbindung aktiv","kcal":100,"protein":10,"carbs":10,"fat":2}');
+        settings.apiKey = key;
+        localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
+        
+        diag.style.color = '#059669';
+        diag.textContent = '✅ Perfekt! Verbunden mit "' + (res._usedModel || 'gemini-3.8-flash') + '".';
+      } catch (err) {
+        diag.style.color = '#be123c';
+        diag.textContent = '❌ Fehlerdetails: ' + err.message;
+      }
+    }
+
+    function handlePhotoUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const maxDim = 1024;
+          let w = img.width, h = img.height;
+          if (w > h && w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
+          else if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          currentImageBase64 = dataUrl.split(',')[1];
+          currentImageMimeType = 'image/jpeg';
+
+          document.getElementById('photoPreview').src = dataUrl;
+          document.getElementById('photoPreviewContainer').classList.remove('hidden');
+          document.getElementById('analyzePhotoBtn').disabled = false;
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function analyzePhotoWithAI() {
+      if (!currentImageBase64) return;
+      if (!ensureApiKey()) return;
+
+      const btn = document.getElementById('analyzePhotoBtn');
+      const hint = document.getElementById('aiHintInput').value.trim();
+      btn.disabled = true;
+      btn.textContent = '⏳ Fotoanalyse läuft...';
+      showStatus('Google Gemini analysiert das Foto...');
+
+      const promptText = 'Analysiere dieses Foto einer Mahlzeit präzise für ein deutsches Ernährungsprotokoll.\n' +
+        (hint ? 'Hinweis: ' + hint + '\n' : '') +
+        'Antworte NUR mit einem kurzen JSON-Objekt:\n' +
+        '{"description":"Kurze deutsche Bezeichnung inkl. Mengen","kcal":550,"protein":35,"carbs":45,"fat":22}';
+
+      try {
+        const res = await callUniversalAI(promptText, currentImageBase64, currentImageMimeType);
+        applyAiResult(res, '✅ Fotoauswertung (' + (res._usedModel || 'Gemini') + ') übernommen!');
+      } catch (err) {
+        showStatus('❌ Gemini-Meldung: ' + err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '✨ Foto mit Gemini 3.8 auswerten';
+      }
+    }
+
+    function toggleVoiceInput() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert('Tipp: Nutze einfach das Mikrofon-Symbol unten rechts auf deiner iPhone-Tastatur!');
+        return;
+      }
+
+      const voiceBtn = document.getElementById('voiceBtn');
+      if (isRecording && recognition) {
+        recognition.stop();
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.lang = 'de-DE';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        isRecording = true;
+        voiceBtn.classList.add('recording-active');
+        voiceBtn.textContent = '🛑 Stopp';
+        showStatus('🎙️ Bitte sprich jetzt deine Mahlzeit ein...');
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        const field = document.getElementById('freeTextInput');
+        field.value = (field.value ? field.value + ' ' : '') + transcript;
+        showStatus('✅ Spracheingabe erkannt! Tippe jetzt auf "Text berechnen".');
+      };
+
+      recognition.onend = () => {
+        isRecording = false;
+        voiceBtn.classList.remove('recording-active');
+        voiceBtn.textContent = '🎤 Diktieren';
+      };
+
+      recognition.start();
+    }
+
+    async function analyzeTextWithAI() {
+      const text = document.getElementById('freeTextInput').value.trim();
+      if (!text) {
+        alert('Bitte gib zuerst eine Beschreibung deiner Mahlzeit ein.');
+        return;
+      }
+      if (!ensureApiKey()) return;
+
+      const btn = document.getElementById('analyzeTextBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Berechne...';
+      showStatus('Google Gemini berechnet Nährwerte...');
+
+      const promptText = 'Berechne die Nährwerte für folgende Mahlzeit auf Deutsch:\n"' +
+        text + '"\nAntworte NUR mit einem kurzen JSON-Objekt:\n' +
+        '{"description":"Kurze Bezeichnung inkl. Mengen","kcal":480,"protein":32,"carbs":40,"fat":18}';
+
+      try {
+        const res = await callUniversalAI(promptText);
+        applyAiResult(res, '✅ Textberechnung (' + (res._usedModel || 'Gemini') + ') übernommen!');
+      } catch (err) {
+        showStatus('❌ Gemini-Meldung: ' + err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '✨ Text berechnen';
+      }
+    }
+
+    function applyAiResult(parsed, msg) {
+      document.getElementById('entryDesc').value = parsed.description || 'Mahlzeit';
+      document.getElementById('entryKcal').value = Math.round(Number(parsed.kcal) || 0);
+      document.getElementById('entryProtein').value = Math.round(Number(parsed.protein) || 0);
+      document.getElementById('entryCarbs').value = Math.round(Number(parsed.carbs) || 0);
+      document.getElementById('entryFat').value = Math.round(Number(parsed.fat) || 0);
+      recalcKcalHint();
+      showStatus(msg);
+    }
+
+    function ensureApiKey() {
+      const currentInput = extractPureKey(document.getElementById('apiKeyInput').value);
+      if (currentInput) {
+        settings.apiKey = currentInput;
+        localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
+      }
+      if (!settings.apiKey) {
+        alert('Bitte hinterlege zuerst oben unter "⚙️ Key" deinen API-Key.');
+        document.getElementById('settingsPanel').classList.remove('hidden');
+        return false;
+      }
+      return true;
+    }
+
+    function startBarcodeScanner() {
+      if (typeof Html5Qrcode === 'undefined') {
+        alert('Scanner wird geladen. Alternativ EAN-Nummer direkt eintippen.');
+        return;
+      }
+      document.getElementById('startScanBtn').classList.add('hidden');
+      document.getElementById('stopScanBtn').classList.remove('hidden');
+      showStatus('📷 Halte den Barcode vor die iPhone-Kamera...');
+
+      html5QrCodeScanner = new Html5Qrcode("barcodeReader");
+      html5QrCodeScanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 240, height: 110 } },
+        (decodedText) => {
+          document.getElementById('barcodeInput').value = decodedText;
+          stopBarcodeScanner();
+          lookupBarcode();
+        },
+        () => {}
+      ).catch(() => {
+        showStatus('Kamera-Zugriff nicht möglich. Bitte Barcode manuell eingeben.', true);
+        stopBarcodeScanner();
+      });
+    }
+
+    function stopBarcodeScanner() {
+      if (html5QrCodeScanner) {
+        html5QrCodeScanner.stop().then(() => {
+          html5QrCodeScanner.clear();
+          html5QrCodeScanner = null;
+        }).catch(() => {});
+      }
+      document.getElementById('startScanBtn').classList.remove('hidden');
+      document.getElementById('stopScanBtn').classList.add('hidden');
+    }
+
+    async function lookupBarcode() {
+      const code = document.getElementById('barcodeInput').value.trim();
+      if (!code) return;
+      showStatus('🔎 Suche Barcode ' + code + ' in OpenFoodFacts...');
+
+      try {
+        const res = await fetch('https://world.openfoodfacts.org/api/v2/product/' + encodeURIComponent(code) + '.json');
+        const data = await res.json();
+
+        if (data.status !== 1 || !data.product) {
+          showStatus('❌ Produkt nicht gefunden. Bitte Foto- oder Text-KI nutzen.', true);
+          return;
+        }
+
+        const p = data.product;
+        const n = p.nutriments || {};
+        const name = p.product_name_de || p.product_name || 'Lebensmittel';
+        const brand = p.brands ? ' (' + p.brands.split(',')[0] + ')' : '';
+
+        lastScannedProductPer100g = {
+          baseName: name + brand,
+          kcal100: Number(n['energy-kcal_100g'] || (n['energy_100g'] ? n['energy_100g'] / 4.184 : 0)) || 0,
+          prot100: Number(n['proteins_100g']) || 0,
+          carbs100: Number(n['carbohydrates_100g']) || 0,
+          fat100: Number(n['fat_100g']) || 0
+        };
+
+        recalcCurrentBarcodeProduct();
+        showStatus('✅ Gefunden: ' + name + brand + '!');
+      } catch (e) {
+        showStatus('❌ Netzwerkfehler beim Abruf der Datenbank.', true);
+      }
+    }
+
+    function recalcCurrentBarcodeProduct() {
+      if (!lastScannedProductPer100g) return;
+      const grams = Number(document.getElementById('barcodeGrams').value) || 100;
+      const factor = grams / 100;
+
+      document.getElementById('entryDesc').value = lastScannedProductPer100g.baseName + ' (' + grams + 'g)';
+      document.getElementById('entryKcal').value = Math.round(lastScannedProductPer100g.kcal100 * factor);
+      document.getElementById('entryProtein').value = Math.round(lastScannedProductPer100g.prot100 * factor * 10) / 10;
+      document.getElementById('entryCarbs').value = Math.round(lastScannedProductPer100g.carbs100 * factor * 10) / 10;
+      document.getElementById('entryFat').value = Math.round(lastScannedProductPer100g.fat100 * factor * 10) / 10;
+    }
+
+    function calculateKcalFromMacros() {
+      const p = Number(document.getElementById('entryProtein').value) || 0;
+      const c = Number(document.getElementById('entryCarbs').value) || 0;
+      const f = Number(document.getElementById('entryFat').value) || 0;
+      document.getElementById('entryKcal').value = Math.round((p * 4) + (c * 4) + (f * 9));
+    }
+
+    function recalcKcalHint() {
+      const p = Number(document.getElementById('entryProtein').value) || 0;
+      const c = Number(document.getElementById('entryCarbs').value) || 0;
+      const f = Number(document.getElementById('entryFat').value) || 0;
+      const calc = Math.round((p * 4) + (c * 4) + (f * 9));
+      document.getElementById('macroCalcHint').textContent = 'Rechnerisch aus Makros: ca. ' + calc + ' kcal';
+    }
+
+    function addEntry() {
+      const date = document.getElementById('entryDate').value;
+      const mealType = document.getElementById('entryMealType').value;
+      const desc = document.getElementById('entryDesc').value.trim();
+      const kcal = Number(document.getElementById('entryKcal').value) || 0;
+      const protein = Number(document.getElementById('entryProtein').value) || 0;
+      const carbs = Number(document.getElementById('entryCarbs').value) || 0;
+      const fat = Number(document.getElementById('entryFat').value) || 0;
+
+      if (!date || !desc) {
+        alert('Bitte gib mindestens ein Datum und eine Beschreibung des Gerichts ein.');
+        return;
+      }
+
+      entries.push({ id: Date.now(), date, mealType, desc, kcal, protein, carbs, fat, weight: null, medNote: '' });
+      saveEntries();
+      renderAll();
+
+      document.getElementById('entryDesc').value = '';
+      document.getElementById('entryKcal').value = '';
+      document.getElementById('entryProtein').value = '';
+      document.getElementById('entryCarbs').value = '';
+      document.getElementById('entryFat').value = '';
+      document.getElementById('aiHintInput').value = '';
+      document.getElementById('freeTextInput').value = '';
+      showStatus('✅ Mahlzeit im Protokoll gespeichert!');
+    }
+
+    function updateEntryField(id, field, value) {
+      const item = entries.find(e => e.id === id);
+      if (!item) return;
+      if (['kcal', 'protein', 'carbs', 'fat'].includes(field)) {
+        item[field] = Number(value) || 0;
+      } else {
+        item[field] = value;
+      }
+      saveEntries();
+      renderAll();
+    }
+
+    function deleteEntry(id) {
+      if (!confirm('Eintrag wirklich löschen?')) return;
+      entries = entries.filter(e => e.id !== id);
+      saveEntries();
+      renderAll();
+    }
+
+    function resetFilter() {
+      document.getElementById('filterFrom').value = '';
+      document.getElementById('filterTo').value = '';
+      renderAll();
+    }
+
+    function formatDateDE(isoStr) {
+      if (!isoStr) return '';
+      const p = isoStr.split('-');
+      return p.length === 3 ? (p[2] + '.' + p[1] + '.' + p[0]) : isoStr;
+    }
+
+    function formatShortDE(isoStr) {
+      if (!isoStr) return '';
+      const p = isoStr.split('-');
+      return p.length === 3 ? (p[2] + '.' + p[1] + '.') : isoStr;
+    }
+
+    function getFilteredEntries() {
+      const from = document.getElementById('filterFrom').value;
+      const to = document.getElementById('filterTo').value;
+
+      const rangeLabel = (from || to)
+        ? ('Zeitraum: ' + (from ? formatDateDE(from) : 'Beginn') + ' bis ' + (to ? formatDateDE(to) : 'Heute'))
+        : 'Zeitraum: Gesamtes Protokoll';
+      document.getElementById('printDateRange').textContent = rangeLabel;
+
+      return entries
+        .filter(e => (!from || e.date >= from) && (!to || e.date <= to))
+        .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+    }
+
+    function renderChart(dayListChrono) {
+      const container = document.getElementById('chartContainer');
+      if (dayListChrono.length === 0) {
+        container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:24px; font-size:0.85rem;">Noch keine Daten für die Verlaufskurve vorhanden.</div>';
+        return;
+      }
+
+      const width = 760, height = 230, padL = 46, padR = 46, padT = 22, padB = 34;
+      const plotW = width - padL - padR, plotH = height - padT - padB;
+
+      const goalKcal = Number(settings.kcalGoal) || 1800;
+      const maxKcal = Math.max(2400, goalKcal * 1.25, ...dayListChrono.map(d => d.kcal));
+
+      const weights = dayListChrono.filter(d => d.weight !== null).map(d => d.weight);
+      const minW = weights.length ? Math.floor(Math.min(...weights) - 1.5) : 70;
+      const maxW = weights.length ? Math.ceil(Math.max(...weights) + 1.5) : 110;
+      const weightSpan = Math.max(1, maxW - minW);
+
+      const n = dayListChrono.length;
+      const stepX = plotW / Math.max(1, n);
+      const barW = Math.min(34, Math.max(8, stepX * 0.55));
+
+      let svg = '<svg viewBox="0 0 ' + width + ' ' + height + '" style="width:100%; height:auto; min-width:480px; display:block; font-family:inherit;">';
+
+      for (let i = 0; i <= 4; i++) {
+        const y = padT + (plotH * i) / 4;
+        const kcalVal = Math.round(maxKcal * (1 - i / 4));
+        svg += '<line x1="' + padL + '" y1="' + y + '" x2="' + (width - padR) + '" y2="' + y + '" stroke="#e2e8f0" stroke-dasharray="3,3" />';
+        svg += '<text x="' + (padL - 6) + '" y="' + (y + 4) + '" text-anchor="end" font-size="10" fill="#64748b">' + kcalVal + '</text>';
+        if (weights.length) {
+          const wVal = (maxW - (weightSpan * i) / 4).toFixed(1);
+          svg += '<text x="' + (width - padR + 6) + '" y="' + (y + 4) + '" text-anchor="start" font-size="10" fill="#059669" font-weight="600">' + wVal + 'kg</text>';
+        }
+      }
+
+      const goalY = padT + plotH * (1 - goalKcal / maxKcal);
+      svg += '<line x1="' + padL + '" y1="' + goalY + '" x2="' + (width - padR) + '" y2="' + goalY + '" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,4" />';
+
+      const labelModulo = Math.max(1, Math.ceil(n / 10));
+      const weightPoints = [];
+
+      dayListChrono.forEach((d, idx) => {
+        const cx = padL + stepX * idx + stepX / 2;
+        const barH = Math.min(plotH, (d.kcal / maxKcal) * plotH);
+        const barY = padT + plotH - barH;
+        const barColor = d.kcal <= goalKcal ? '#cbd5e1' : '#fca5a5';
+
+        svg += '<rect x="' + (cx - barW / 2) + '" y="' + barY + '" width="' + barW + '" height="' + barH + '" rx="4" fill="' + barColor + '" />';
+
+        if (idx % labelModulo === 0 || idx === n - 1) {
+          svg += '<text x="' + cx + '" y="' + (height - 10) + '" text-anchor="middle" font-size="10" fill="#475569">' + formatShortDE(d.date) + '</text>';
+        }
+
+        if (d.weight !== null) {
+          const wy = padT + plotH * (1 - (d.weight - minW) / weightSpan);
+          weightPoints.push({ x: cx, y: wy, w: d.weight });
+        }
+      });
+
+      if (weightPoints.length > 1) {
+        const pathD = weightPoints.map((pt, i) => (i === 0 ? 'M ' : 'L ') + pt.x + ' ' + pt.y).join(' ');
+        svg += '<path d="' + pathD + '" fill="none" stroke="#059669" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" />';
+      }
+      weightPoints.forEach(pt => {
+        svg += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="4.5" fill="#059669" stroke="#ffffff" stroke-width="1.5" />';
+        svg += '<text x="' + pt.x + '" y="' + (pt.y - 8) + '" text-anchor="middle" font-size="10" font-weight="700" fill="#065f46">' + pt.w.toFixed(1) + '</text>';
+      });
+
+      svg += '</svg>';
+      container.innerHTML = svg;
+    }
+
+    function renderAll() {
+      const filtered = getFilteredEntries();
+
+      const daysMap = {};
+      filtered.forEach(e => {
+        if (!daysMap[e.date]) {
+          daysMap[e.date] = { date: e.date, count: 0, kcal: 0, protein: 0, carbs: 0, fat: 0, weight: null, medNotes: [] };
+        }
+        const d = daysMap[e.date];
+        if (e.kcal > 0) d.count += 1;
+        d.kcal += Number(e.kcal) || 0;
+        d.protein += Number(e.protein) || 0;
+        d.carbs += Number(e.carbs) || 0;
+        d.fat += Number(e.fat) || 0;
+        if (e.weight !== null && e.weight !== undefined && e.weight !== '') d.weight = Number(e.weight);
+        if (e.medNote) d.medNotes.push(e.medNote);
+      });
+
+      const dayListDesc = Object.values(daysMap).sort((a, b) => b.date.localeCompare(a.date));
+      const dayListChrono = [...dayListDesc].reverse();
+      const numDays = dayListDesc.filter(d => d.kcal > 0).length;
+
+      let totalKcal = 0, totalP = 0, totalC = 0, totalF = 0;
+      dayListDesc.forEach(d => {
+        totalKcal += d.kcal; totalP += d.protein; totalC += d.carbs; totalF += d.fat;
+      });
+
+      document.getElementById('statDays').textContent = numDays;
+      document.getElementById('statAvgKcal').textContent = numDays ? (Math.round(totalKcal / numDays) + ' kcal') : '0 kcal';
+      document.getElementById('statGoalSub').textContent = 'Ziel: ' + (settings.kcalGoal || 1800) + ' kcal';
+      document.getElementById('statAvgProtein').textContent = numDays ? (Math.round(totalP / numDays) + ' g') : '0 g';
+      document.getElementById('statAvgCarbs').textContent = numDays ? (Math.round(totalC / numDays) + ' g') : '0 g';
+      document.getElementById('statAvgFat').textContent = numDays ? (Math.round(totalF / numDays) + ' g') : '0 g';
+
+      const daysWithWeight = dayListChrono.filter(d => d.weight !== null);
+      if (daysWithWeight.length >= 2) {
+        const startW = daysWithWeight[0].weight;
+        const endW = daysWithWeight[daysWithWeight.length - 1].weight;
+        const diff = (endW - startW).toFixed(1);
+        const sign = diff > 0 ? '+' : '';
+        document.getElementById('statWeightDiff').textContent = sign + diff + ' kg';
+        document.getElementById('statWeightSub').textContent = startW + ' → ' + endW + ' kg';
+      } else if (daysWithWeight.length === 1) {
+        document.getElementById('statWeightDiff').textContent = daysWithWeight[0].weight + ' kg';
+        document.getElementById('statWeightSub').textContent = 'Check-in Wert';
+      } else {
+        document.getElementById('statWeightDiff').textContent = '—';
+        document.getElementById('statWeightSub').textContent = 'Noch kein Gewicht';
+      }
+
+      const latestCheckin = dayListDesc.find(d => d.weight !== null || d.medNotes.length > 0);
+      const badge = document.getElementById('lastCheckinBadge');
+      if (badge && latestCheckin) {
+        const wStr = latestCheckin.weight !== null ? latestCheckin.weight.toFixed(1) + ' kg' : '';
+        const mStr = latestCheckin.medNotes.length ? latestCheckin.medNotes[0] : '';
+        badge.textContent = 'Letzter Stand (' + formatShortDE(latestCheckin.date) + '): ' + [wStr, mStr].filter(Boolean).join(' · ');
+      }
+
+      renderChart(dayListChrono);
+
+      const dailyBody = document.getElementById('dailySummaryBody');
+      dailyBody.innerHTML = '';
+      if (dayListDesc.length === 0) {
+        dailyBody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#94a3b8; padding:16px;">Keine Einträge im Zeitraum</td></tr>';
+      } else {
+        dayListDesc.forEach(d => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = '<td style="font-weight:700;">' + formatDateDE(d.date) + '</td>' +
+            '<td>' + (d.count > 0 ? d.count : '—') + '</td>' +
+            '<td style="font-weight:800;">' + (d.kcal > 0 ? Math.round(d.kcal) + ' kcal' : '—') + '</td>' +
+            '<td style="color:var(--blue); font-weight:700;">' + (d.protein > 0 ? Math.round(d.protein) + ' g' : '—') + '</td>' +
+            '<td style="color:var(--amber);">' + (d.carbs > 0 ? Math.round(d.carbs) + ' g' : '—') + '</td>' +
+            '<td style="color:var(--rose);">' + (d.fat > 0 ? Math.round(d.fat) + ' g' : '—') + '</td>' +
+            '<td style="color:var(--emerald); font-weight:700;">' + (d.weight ? d.weight.toFixed(1) + ' kg' : '—') + '</td>' +
+            '<td style="font-size:0.76rem; color:var(--text-muted);">' + (d.medNotes.join(', ') || '—') + '</td>';
+          dailyBody.appendChild(tr);
+        });
+      }
+
+      const mobileList = document.getElementById('mobileEntriesList');
+      const entriesBody = document.getElementById('entriesTableBody');
+      mobileList.innerHTML = '';
+      entriesBody.innerHTML = '';
+
+      filtered.forEach(e => {
+        const safeDesc = (e.desc || '').replace(/"/g, '&quot;');
+
+        const card = document.createElement('div');
+        card.className = 'meal-card';
+        card.innerHTML = '<div class="meal-card-top">' +
+          '<input type="date" value="' + e.date + '" onchange="updateEntryField(' + e.id + ', \'date\', this.value)">' +
+          '<select onchange="updateEntryField(' + e.id + ', \'mealType\', this.value)">' +
+            '<option value="Frühstück" ' + (e.mealType === 'Frühstück' ? 'selected' : '') + '>Frühstück</option>' +
+            '<option value="Mittagessen" ' + (e.mealType === 'Mittagessen' ? 'selected' : '') + '>Mittagessen</option>' +
+            '<option value="Abendessen" ' + (e.mealType === 'Abendessen' ? 'selected' : '') + '>Abendessen</option>' +
+            '<option value="Snack / Shake" ' + (e.mealType === 'Snack / Shake' ? 'selected' : '') + '>Snack / Shake</option>' +
+            '<option value="Check-in" ' + (e.mealType === 'Check-in' ? 'selected' : '') + '>Check-in</option>' +
+          '</select>' +
+          '<button type="button" onclick="deleteEntry(' + e.id + ')" style="background:none; border:none; color:#94a3b8; font-size:1.1rem; height:36px;">✕</button>' +
+        '</div>' +
+        '<input type="text" value="' + safeDesc + '" onchange="updateEntryField(' + e.id + ', \'desc\', this.value)" style="font-weight:700; font-size:15px; height:40px; margin-bottom:4px;">' +
+        '<div class="meal-card-macros">' +
+          '<div class="mini-field"><label>kcal</label><input type="number" value="' + e.kcal + '" onchange="updateEntryField(' + e.id + ', \'kcal\', this.value)" class="input-kcal"></div>' +
+          '<div class="mini-field"><label style="color:var(--blue);">Protein</label><input type="number" step="0.1" value="' + e.protein + '" onchange="updateEntryField(' + e.id + ', \'protein\', this.value)" class="input-protein"></div>' +
+          '<div class="mini-field"><label style="color:var(--amber);">KH</label><input type="number" step="0.1" value="' + e.carbs + '" onchange="updateEntryField(' + e.id + ', \'carbs\', this.value)" class="input-carbs"></div>' +
+          '<div class="mini-field"><label style="color:var(--rose);">Fett</label><input type="number" step="0.1" value="' + e.fat + '" onchange="updateEntryField(' + e.id + ', \'fat\', this.value)" class="input-fat"></div>' +
+        '</div>';
+        mobileList.appendChild(card);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td><input type="date" value="' + e.date + '" onchange="updateEntryField(' + e.id + ', \'date\', this.value)" class="table-input"></td>' +
+          '<td><select onchange="updateEntryField(' + e.id + ', \'mealType\', this.value)" class="table-input">' +
+            '<option value="Frühstück" ' + (e.mealType === 'Frühstück' ? 'selected' : '') + '>Frühstück</option>' +
+            '<option value="Mittagessen" ' + (e.mealType === 'Mittagessen' ? 'selected' : '') + '>Mittagessen</option>' +
+            '<option value="Abendessen" ' + (e.mealType === 'Abendessen' ? 'selected' : '') + '>Abendessen</option>' +
+            '<option value="Snack / Shake" ' + (e.mealType === 'Snack / Shake' ? 'selected' : '') + '>Snack / Shake</option>' +
+            '<option value="Check-in" ' + (e.mealType === 'Check-in' ? 'selected' : '') + '>Check-in</option>' +
+          '</select></td>' +
+          '<td><input type="text" value="' + safeDesc + '" onchange="updateEntryField(' + e.id + ', \'desc\', this.value)" class="table-input" style="font-weight:600;"></td>' +
+          '<td><input type="number" value="' + e.kcal + '" onchange="updateEntryField(' + e.id + ', \'kcal\', this.value)" class="table-input" style="font-weight:700;"></td>' +
+          '<td><input type="number" step="0.1" value="' + e.protein + '" onchange="updateEntryField(' + e.id + ', \'protein\', this.value)" class="table-input" style="color:var(--blue); font-weight:600;"></td>' +
+          '<td><input type="number" step="0.1" value="' + e.carbs + '" onchange="updateEntryField(' + e.id + ', \'carbs\', this.value)" class="table-input" style="color:var(--amber);"></td>' +
+          '<td><input type="number" step="0.1" value="' + e.fat + '" onchange="updateEntryField(' + e.id + ', \'fat\', this.value)" class="table-input" style="color:var(--rose);"></td>' +
+          '<td class="no-print"><button type="button" onclick="deleteEntry(' + e.id + ')" style="background:none; border:none; color:#94a3b8; cursor:pointer;">✕</button></td>';
+        entriesBody.appendChild(tr);
+      });
+    }
+
+    function exportBackup() {
+      const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), settings, favorites, entries }, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'ernaehrungsprotokoll_backup_' + new Date().toISOString().split('T')[0] + '.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importBackup(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (Array.isArray(data.entries)) { entries = data.entries; saveEntries(); }
+          if (Array.isArray(data.favorites)) { favorites = data.favorites; saveFavorites(); renderFavorites(); }
+          if (data.settings) { settings = { ...settings, ...data.settings }; localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings)); loadFromStorage(); }
+          renderAll();
+          alert('Backup erfolgreich geladen!');
+        } catch (err) { alert('Ungültige Backup-Datei.'); }
+      };
+      reader.readAsText(file);
+    }
+  </script>
+</body>
+</html>
